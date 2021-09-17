@@ -1,0 +1,69 @@
+# Clear Previous Data
+wipe
+# units: kN, GPa, mm
+# Define Model Properties: model  BasicBuilder  -ndm  Number_of_Dimensions  -ndf  Nunber_of_DoFs_in_Each_Node
+                           model  BasicBuilder  -ndm         2              -ndf              2
+# Define Nodes Information
+    # Create nodes: node  node#   x[mm]    y[mm]
+                    node    1      0.0      0.0
+                    node    2      0.0  24000.0	
+                    node    3   5000.0      0.0
+                    node    4   5000.0  12000.0	
+# Assign nodes to a Group: region  Region#  -Type  Target_Nodes 
+                               region    1      -node    1 2 3 4
+ # Set Restrained DoFs: fix  Node#  X_Restrained?  Y_Restrained?
+                           fix    1         1                1
+                           fix    2         1                1
+                           fix    3         0                1
+	# Define Elements Information
+     # Create Elastic Material: uniaxialMaterial  Elastic  Material#   E[GPa]
+                               uniaxialMaterial  Elastic     1         58.0
+	 # Create Truss Elements:   element  truss  Element#  Start_Node  End_Node  A[mm^2]  Assigned_Material#
+                               element  Truss     1          1           3     4000.0           1
+                               element  Truss     2          3           4     4000.0           1
+                               element  Truss     3          4           2     4000.0           1
+                               element  Truss     4          1           4     4000.0           1
+                               element  Truss     5          3           2     4000.0           1
+    	# Assign Elements to a Group: region  Region#  -Type  Target_Elements 
+                                  region    2      -ele     1 2 3 4 5					   
+           # Define Applied Loads
+    # Create a Linear Loading TimeSeries: timeSeries  Linear  TimeSeries#
+                                          timeSeries  Linear      1
+                                     
+    # Create a Plain load pattern associated with the TimeSeries: pattern  Plain  pattern#  Assigned_TimeSeries#  {
+                                                                  pattern  Plain     1              1             {
+    # Create the nodal loads:                                                                                        load  Node#  X_Value[kN]  Y_Value[kN]
+                                                                                                                     load    3      680.0        0.0
+                                                                                                                     load    4     -560.0      980.0
+                                                                                                                  }
+                    # Define Analysis Parameters                                                                                              
+                            system BandSPD
+                            numberer RCM
+                            constraints Plain
+                            integrator LoadControl 1.0
+                            algorithm Linear
+                            analysis Static
+
+# Create Output Files
+    # Output File for Nodal Info:    recorder  Node     -file    Output_File_Name                -time[?]  -node/Region  Node/Region#    -dof  Target_DoFs  Type
+                                     recorder  Node     -file   OSNodalDisplacements.txt                   -region           1           -dof      1 2      disp
+                                                                                                                                         
+                                     recorder  Node     -file   OSNodalReactionsRegion.txt                 -region           1           -dof      1 2      reaction
+                                     recorder  Node     -file   OSNodalReactionsNode.txt                   -node           1 2 3 4       -dof      1 2      reaction                                               
+                                                                                                                                         
+                                     recorder  Node     -file   OSNode4ReactionsTime.txt         -time     -node             4           -dof      1 2      reaction    
+                                     recorder  Node     -file   OSNode4Reactions.txt                       -node             4           -dof      1 2      reaction                                           
+ 
+    # Output File for Elements Info: recorder  Element  -file   Output_File_Name                 -time[?]  -ele/Region  Element/Region#                     Type
+                                     recorder  Element  -file   OSElementsDeformations.txt                 -region             2                            basicDeformation  # basicDeformation - Gives v Vector
+                                     recorder  Element  -file   OSElementsForces.txt                       -region             2                            basicForces
+                                                                                                        
+                                     recorder  Element  -file   OSElement5ForcesBasic.txt                  -ele                5                            basicForces       # basicForces - Gives q Vector    
+                                     recorder  Element  -file   OSElement5Forces.txt                       -ele                5                            force             # force = localForce = globalForce - Give q Vector in each Direction
+                                                                                                        
+                                     recorder  Element  -file   OSElement5DeformationsBasic.txt            -ele                5                            basicDeformation  # basicDeformation = deformation (Only in Truss Elements)
+                                     recorder  Element  -file   OSElement5Deformations.txt                 -ele                5                            deformation       # basicDeformation - Gives Deformation for Uniaxial Materials                                            
+
+# Start the Analysis: analyze  Number_of_Steps                                   
+                      analyze        1
+							   
